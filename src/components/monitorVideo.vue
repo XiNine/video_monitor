@@ -20,7 +20,7 @@ export default {
     type: {
       //播放模式 0 预览 1 回放
       type: Number,
-      default: 0,
+      default: 1,
     },
   },
   data() {
@@ -29,11 +29,11 @@ export default {
       videoLoad: false, //插件是否安装
       initCount: 0, //尝试启动插件次数
       config: {
-        //海康后台提供的网关信息，需要叫后端配置好提供给你，或者接口请求回来
+        //海康后台提供的网关信息，需要叫后端配置好提供给你，或者接口请求回来（！！！必填！！！）
         appkey: "",
         secret: "",
         ip: "",
-        port: 443,
+        port: 443, //只能是number类型否则白屏
       },
     };
   },
@@ -167,15 +167,25 @@ export default {
     /* 启动播放 */
     getClickAction(oWebControl = this.oWebControl, code = this.code) {
       code = code.replace(/(\s*$)/g, "");
+      const funcName = this.type ? "startPlayback" : "startPreview";
+      const startTimeStamp = Math.floor(
+        new Date(`${this.getTime(new Date(), false)} 00:00:00`).getTime() / 1000
+      ).toString();
+      const endTimeStamp = Math.floor(
+        new Date(`${this.getTime(new Date(), false)} 23:59:59`).getTime() / 1000
+      ).toString();
+      const params1 = {
+        cameraIndexCode: code,
+        streamMode: 0,
+        transMode: 1,
+        gpuMode: 0,
+        wndId: -1,
+      };
+      const params2 = { ...params1, startTimeStamp, endTimeStamp };
+      const params = this.type ? params2 : params1;
       oWebControl.JS_RequestInterface({
-        funcName: "startPreview",
-        argument: JSON.stringify({
-          cameraIndexCode: code,
-          streamMode: 0,
-          transMode: 1,
-          gpuMode: 0,
-          wndId: -1,
-        }),
+        funcName: funcName,
+        argument: JSON.stringify(params),
       });
     },
 
@@ -192,6 +202,37 @@ export default {
     downAction() {
       const urls = window.location.origin;
       window.location.href = `${urls}/media/VideoWebPlugin.exe`;
+    },
+    getTime(times, status = true, str) {
+      const time = new Date(times);
+      const year = time.getFullYear();
+      const month = (time.getMonth() + 1).toString().padStart(2, "0");
+      const week = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"][
+        time.getDay()
+      ];
+      const day = time.getDate().toString().padStart(2, "0");
+      const hours = time.getHours().toString().padStart(2, "0");
+      const minute = time.getMinutes().toString().padStart(2, "0");
+      const second = time.getSeconds().toString().padStart(2, "0");
+      if (status) return `${year}-${month}-${day} ${hours}:${minute}:${second}`;
+      switch (str) {
+        case "年":
+          return year;
+        case "月":
+          return month;
+        case "周":
+          return week;
+        case "日":
+          return day;
+        case "时":
+          return hours;
+        case "分":
+          return minute;
+        case "秒":
+          return second;
+        default:
+          return `${year}-${month}-${day}`;
+      }
     },
   },
 
