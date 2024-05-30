@@ -39,7 +39,7 @@ export default {
   },
   computed: {
     styles() {
-      const stu = this.width.indexOf("%") !== -1;
+      const stu = this.width.includes("%") || this.width.includes("px");
       return {
         width: stu ? `${this.width}` : `${this.width}px`,
         height: stu ? `${this.height}` : `${this.height}px`,
