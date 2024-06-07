@@ -142,16 +142,15 @@ export default {
         }),
       };
       oWebControl.JS_RequestInterface(configObj).then(async () => {
-        await this.getDomInfo(oWebControl);
+        await this.getDomInfo();
         await this.getClickAction(oWebControl, code);
       });
     },
 
     /* 更新视频视频的位置及大小改变 */
-    getDomInfo(oWebControl = this.oWebControl) {
-      const { width, height, top, left } = document
-        .getElementById(this.idName)
-        .getBoundingClientRect();
+    getDomInfo() {
+      const oWebControl = this.oWebControl
+      const { width, height, top, left } = document.getElementById(this.idName).getBoundingClientRect();
       if (oWebControl) {
         oWebControl.JS_Resize(width, height);
         oWebControl.JS_CuttingPartWindow(left, top, 0, 0);
