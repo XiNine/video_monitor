@@ -1,16 +1,10 @@
 <script>
 export default {
   props: {
-    code: String, //摄像头编号
-    width: {
-      //盒子宽度
+    code: {
+      //摄像头编号
       type: String,
-      default: "100",
-    },
-    height: {
-      //盒子高度
-      type: String,
-      default: "100",
+      required: true,
     },
     index: {
       //多个视频循环的索引或唯一标识
@@ -21,6 +15,26 @@ export default {
       //播放模式 0 预览 1 回放
       type: Number,
       default: 1,
+    },
+    time: {
+      //回放的时间段
+      type: Array,
+      default: () => [new Date(new Date() - 3600 * 1000 * 24 * 1), new Date()],
+    },
+    scrollDom: {
+      //滚动父元素的class类名
+      type: String,
+      default: "",
+    },
+    width: {
+      //盒子宽度
+      type: String,
+      default: "100",
+    },
+    height: {
+      //盒子高度
+      type: String,
+      default: "100",
     },
   },
   data() {
@@ -50,12 +64,20 @@ export default {
     },
   },
   mounted() {
-    /* 可以直接用的，vue3改写下语法就行 */
-    this.getDestruction();
-    this.initPlugin();
-    window.addEventListener("resize", this.getDomInfo);
+    this.init();
   },
   methods: {
+    /* 初始化 */
+    init() {
+      /* 可以直接用的，vue3改写下语法就行 */
+      this.getDestruction();
+      this.initPlugin();
+      window.addEventListener("resize", this.getDomInfo);
+      if (this.scrollDom) {
+        const dom = document.querySelector(`.${this.scrollDom}`);
+        dom.addEventListener("scroll", this.getDomInfo);
+      }
+    },
     /* 创建插件实例 */
     initPlugin() {
       this.videoLoad = false;
@@ -149,8 +171,10 @@ export default {
 
     /* 更新视频视频的位置及大小改变 */
     getDomInfo() {
-      const oWebControl = this.oWebControl
-      const { width, height, top, left } = document.getElementById(this.idName).getBoundingClientRect();
+      const oWebControl = this.oWebControl;
+      const { width, height, top, left } = document
+        .getElementById(this.idName)
+        .getBoundingClientRect();
       if (oWebControl) {
         oWebControl.JS_Resize(width, height);
         oWebControl.JS_CuttingPartWindow(left, top, 0, 0);
@@ -165,36 +189,36 @@ export default {
 
     /* 启动播放 */
     getClickAction(oWebControl = this.oWebControl, code = this.code) {
-      code = code.replace(/(\s*$)/g, "");
-      const funcName = this.type ? "startPlayback" : "startPreview";
-      const startTimeStamp = Math.floor(
-        new Date(`${this.getTime(new Date(), false)} 00:00:00`).getTime() / 1000
-      ).toString();
-      const endTimeStamp = Math.floor(
-        new Date(`${this.getTime(new Date(), false)} 23:59:59`).getTime() / 1000
-      ).toString();
-      const params1 = {
-        cameraIndexCode: code,
-        streamMode: 0,
-        transMode: 1,
-        gpuMode: 0,
-        wndId: -1,
-      };
-      const params2 = { ...params1, startTimeStamp, endTimeStamp };
-      const params = this.type ? params2 : params1;
+      code = code.replace(/(\s*$)/g, '')
+      const funcName = this.type ? 'startPlayback' : 'startPreview';
+      const [startTime,endTime] = [this.$getTime(this.time[0]),this.$getTime(this.time[1])];
+      const startTimeStamp = Math.floor(new Date(startTime).getTime() / 1000).toString();
+      const endTimeStamp = Math.floor(new Date(endTime).getTime() / 1000).toString();
+      const params1 = { cameraIndexCode: code, streamMode: 0, transMode: 1, gpuMode: 0, wndId: -1 }
+      const params2 = { ...params1, startTimeStamp, endTimeStamp }
+      const params = this.type ? params2 : params1
       oWebControl.JS_RequestInterface({
         funcName: funcName,
         argument: JSON.stringify(params),
-      });
+      })
     },
 
     /* 销毁实例 */
     async getDestruction() {
       if (this.oWebControl) {
+        window.removeEventListener('resize', this.getDomInfo)
+        if(this.scrollDom){
+          const dom = document.querySelector(`.${this.scrollDom}`)
+          dom.removeEventListener('scroll', this.getDomInfo)
+        }
         await this.oWebControl.JS_HideWnd();
         await this.oWebControl.JS_Disconnect();
-        window.removeEventListener("resize", this.getDomInfo);
       }
+    },
+
+    /* 显示隐藏 */
+    setShow(stu) {
+      stu ? this.oWebControl.JS_ShowWnd() : this.oWebControl.JS_HideWnd()
     },
 
     /* 下载插件--如果不允许访问外网就把插件放到自己服务器 */
