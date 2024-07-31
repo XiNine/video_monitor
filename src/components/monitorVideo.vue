@@ -14,7 +14,7 @@ export default {
     type: {
       //播放模式 0 预览 1 回放
       type: Number,
-      default: 1,
+      default: 0,
     },
     time: {
       //回放的时间段
@@ -201,8 +201,19 @@ export default {
         funcName: funcName,
         argument: JSON.stringify(params),
       })
+      this.setCallbacks();
     },
-
+    /* 获取视频播放状态-不能播放提交设备编码 */
+    setCallbacks() {
+      this.oWebControl.JS_SetWindowControlCallback({
+        cbIntegrationCallBack: ({ responseMsg })=>{
+          const { type,msg } = responseMsg || {};
+          if((type === 2) && (msg?.result !== 768)){
+            this.$emit('msg',this.code);
+          }
+        }
+      });
+    },
     /* 销毁实例 */
     async getDestruction() {
       if (this.oWebControl) {
