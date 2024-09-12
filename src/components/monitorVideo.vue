@@ -2,8 +2,8 @@
 export default {
   props: {
     code: {
-      //摄像头编号
-      type: String,
+      //摄像头编号，传字符串单个播放，传数组批量播放
+      type: [String,Array],
       required: true,
     },
     index: {
@@ -155,7 +155,7 @@ export default {
           playMode: this.type, //播放模式：0实时预览、1视频回放
           snapDir: "D:\\SnapDir", //抓图存储路径
           videoDir: "D:\\VideoDir", //紧急录像或录像剪辑存储路径
-          layout: "1x1", //布局方式
+          layout: "1x1", //布局方式（如果是批量播放，布局方式要改大于或摄像头编号数据的长度）
           enableHTTPS: 1, //是否启用HTTPS协议
           encryptedFields: "secret", //加密字段
           showToolbar: 1, //是否显示工具栏
@@ -189,17 +189,40 @@ export default {
 
     /* 启动播放 */
     getClickAction(oWebControl = this.oWebControl, code = this.code) {
-      code = code.replace(/(\s*$)/g, '')
-      const funcName = this.type ? 'startPlayback' : 'startPreview';
-      const [startTime,endTime] = [this.$getTime(this.time[0]),this.$getTime(this.time[1])];
+      code = Array.isArray(code) ? code : code.replace(/(\s*$)/g, '')
+      const funcNameSingle = this.type ? 'startPlayback' : 'startPreview';
+      const funcNameMany = this.type ? 'startMultiPlaybackByCameraIndexCode' : 'startMultiPreviewByCameraIndexCode';
+
+      const [startTime, endTime] = [this.$getTime(this.time[0]), this.$getTime(this.time[1])];
       const startTimeStamp = Math.floor(new Date(startTime).getTime() / 1000).toString();
       const endTimeStamp = Math.floor(new Date(endTime).getTime() / 1000).toString();
       const params1 = { cameraIndexCode: code, streamMode: 0, transMode: 1, gpuMode: 0, wndId: -1 }
       const params2 = { ...params1, startTimeStamp, endTimeStamp }
-      const params = this.type ? params2 : params1
+      const params = this.type ? params2 : params1;
+
+      let [funcName, result] = ['', []]
+
+      if (Array.isArray(code)) {
+        funcName = funcNameMany
+        result = this.code.reduce((arr, item, index) => {
+          params['cameraIndexCode'] = item.code.replace(/(\s*$)/g, '')
+          arr.push({
+            ...params,
+            wndId: index + 1,
+            ezvizDirect: 0,
+            transMode: 1
+          })
+          return arr;
+        }, [])
+        result = { list: result }
+      } else {
+        funcName = funcNameSingle;
+        result = params
+      }
+
       oWebControl.JS_RequestInterface({
         funcName: funcName,
-        argument: JSON.stringify(params),
+        argument: JSON.stringify(result),
       })
       this.setCallbacks();
     },
@@ -222,6 +245,7 @@ export default {
           const dom = document.querySelector(`.${this.scrollDom}`)
           dom.removeEventListener('scroll', this.getDomInfo)
         }
+        this.setShow(false);
         await this.oWebControl.JS_HideWnd();
         await this.oWebControl.JS_Disconnect();
       }
